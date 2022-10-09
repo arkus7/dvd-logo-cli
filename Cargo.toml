@@ -1,5 +1,5 @@
 [package]
-name = "dvd-logo-cli"
+name = "dvd-logo"
 version = "0.1.0"
 edition = "2021"
 
