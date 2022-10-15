@@ -1,18 +1,13 @@
-use clap::Parser;
-use owo_colors::Rgb;
+use crossterm::style::Color;
+
 use rand::Rng;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[command(propagate_version = true)]
-pub struct Cli {}
-
-pub fn random_color() -> Rgb {
+pub fn random_color() -> Color {
     let mut rng = rand::thread_rng();
 
-    Rgb(
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
-    )
+    Color::Rgb {
+        r: rng.gen_range(0..255),
+        g: rng.gen_range(0..255),
+        b: rng.gen_range(0..255),
+    }
 }
