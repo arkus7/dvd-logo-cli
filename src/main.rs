@@ -32,11 +32,12 @@ const ASCII: &str = r#"
 
 const LINE_LENGTH: u16 = 40;
 const LINES_COUNT: u16 = 11;
+const MIN_PADDING: u16 = 5;
 
-const TICK_TIME: Duration = Duration::from_millis(50);
+const TICK_TIME: Duration = Duration::from_millis(32);
 
 fn main() -> Result<()> {
-    let color = random_color();
+    let mut color = random_color();
     let mut column_speed: i16 = 1;
     let mut row_speed: i16 = 1;
 
@@ -44,14 +45,15 @@ fn main() -> Result<()> {
     execute!(stdout, EnterAlternateScreen)?;
     terminal::enable_raw_mode()?;
 
-
     let mut rng = rand::thread_rng();
 
     let mut size = terminal::size()?;
-    let mut position = (rng.gen_range(1..size.0 - LINE_LENGTH), rng.gen_range(1..size.1 - LINES_COUNT));
+    let mut position = (
+        rng.gen_range(1..size.0 - LINE_LENGTH),
+        rng.gen_range(1..size.1 - LINES_COUNT),
+    );
 
     loop {
-        size = terminal::size()?;
         queue!(
             stdout,
             style::ResetColor,
@@ -59,6 +61,24 @@ fn main() -> Result<()> {
             cursor::Hide,
             cursor::MoveTo(position.0, position.1),
         )?;
+
+        if let Some('q') = read_char()? {
+            break;
+        };
+
+        size = terminal::size()?;
+
+        if size.0 <= LINE_LENGTH + MIN_PADDING || size.1 <= LINES_COUNT + MIN_PADDING {
+            queue!(
+                stdout,
+                cursor::MoveTo(1, 1),
+                style::SetForegroundColor(style::Color::Red),
+                style::Print("Terminal window is too small!")
+            )?;
+            stdout.flush()?;
+            continue;
+        }
+
         for line in ASCII.split('\n') {
             queue!(
                 stdout,
@@ -69,11 +89,21 @@ fn main() -> Result<()> {
             )?;
         }
 
-        if position.0 + LINE_LENGTH >= size.0 || position.0 == 0 {
-            column_speed = -column_speed;
+        if position.0 + LINES_COUNT > size.0 {
+            position.0 = size.0 - LINE_LENGTH;
         }
-        if position.1 + LINES_COUNT >= size.1 || position.1 == 0 {
+
+        if position.1 + LINES_COUNT > size.1 {
+            position.1 = size.1 - LINES_COUNT;
+        }
+
+        if position.0 + LINE_LENGTH == size.0 || position.0 == 1 {
+            column_speed = -column_speed;
+            color = random_color();
+        }
+        if position.1 + LINES_COUNT == size.1 || position.1 == 1 {
             row_speed = -row_speed;
+            color = random_color();
         }
 
         position = (
@@ -81,11 +111,17 @@ fn main() -> Result<()> {
             position.1.saturating_add_signed(row_speed),
         );
 
-        stdout.flush()?;
+        queue!(
+            stdout,
+            cursor::MoveTo(1, 1),
+            style::Print(format!("pos: {:?}", position)),
+            cursor::MoveToNextLine(1),
+            style::Print(format!("speed: {:?}", (column_speed, row_speed))),
+            cursor::MoveToNextLine(1),
+            style::Print(format!("size: {:?}", size)),
+        )?;
 
-        if let Some('q') = read_char()? {
-            break;
-        };
+        stdout.flush()?;
     }
 
     execute!(
